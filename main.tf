@@ -41,11 +41,15 @@ data "aws_ami" "debian" {
 # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc
 resource "aws_vpc" "web" {
   cidr_block = "10.0.0.0/16"
+
   # enable dns enable_dns_hostnames
+  enable_dns_hostnames = true
 
   tags = {
     Name = "project_vpc"
     # add project name using local
+    project_name = local.project_name
+
   }
 }
 
@@ -56,12 +60,16 @@ resource "aws_vpc" "web" {
 resource "aws_subnet" "web" {
   vpc_id     = aws_vpc.web.id
   cidr_block = "10.0.1.0/24"
+
   # set availability zone
+  availability_zone = "us-west-2a"
   # add public ip on launch
+  map_public_ip_on_launch = true
 
   tags = {
     Name = "Web"
     # add project name using local
+    project_name = local.project_name
   }
 }
 
@@ -69,10 +77,12 @@ resource "aws_subnet" "web" {
 # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/internet_gateway
 resource "aws_internet_gateway" "web-gw" {
   # add vpc
+  vpc_id = aws_vpc.web.id
 
   tags = {
     Name = "Web"
     # add project name using local
+    project_name = local.project_name
   }
 }
 
@@ -80,10 +90,12 @@ resource "aws_internet_gateway" "web-gw" {
 # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table
 resource "aws_route_table" "web" {
   # add vpc 
+  vpc_id = aws_vpc.web.id
 
   tags = {
     Name = "web-route"
     # add project name using local
+    project_name = local.project_name
   }
 }
 
@@ -93,11 +105,13 @@ resource "aws_route" "default_route" {
   route_table_id         = aws_route_table.web.id
   destination_cidr_block = "0.0.0.0/0"
   # add gateway id
+  gateway_id = aws_internet_gateway.web-gw.id
 }
 
 # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table_association
 resource "aws_route_table_association" "web" {
   # add subnet id
+  subnet_id      = aws_subnet.web.id
   route_table_id = aws_route_table.web.id
 }
 
@@ -106,10 +120,12 @@ resource "aws_security_group" "web" {
   name        = "allow_ssh"
   description = "allow ssh from home and work"
   # add vpc id
+  vpc_id = aws_vpc.web.id
 
   tags = {
     Name = "Web"
     # add project name using local
+    project_name = local.project_name
   }
 }
 
@@ -119,6 +135,10 @@ resource "aws_vpc_security_group_ingress_rule" "web-ssh" {
   security_group_id = aws_security_group.web.id
 
   # allow ssh anywhere
+  cidr_ipv4   = "0.0.0.0/0"
+  from_port   = 22
+  ip_protocol = "tcp"
+  to_port     = 22
 }
 
 # allow http
@@ -127,6 +147,10 @@ resource "aws_vpc_security_group_ingress_rule" "web-http" {
   security_group_id = aws_security_group.web.id
 
   # allow http anywhere
+  cidr_ipv4   = "0.0.0.0/0"
+  from_port   = 80
+  ip_protocol = "tcp"
+  to_port     = 80
 }
 
 # allow all out
@@ -151,17 +175,23 @@ resource "aws_vpc_security_group_egress_rule" "web-egress" {
 # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/instance
 resource "aws_instance" "web" {
   # use ami provided by data block above
+  ami = data.aws_ami.debian.id
   # set instance type
+  instance_type = "t3.micro"
   # add user datat for cloud-config file in scripts directory
   # https://developer.hashicorp.com/terraform/language/expressions/references#filesystem-and-workspace-info
   user_data = file("${path.root}/scripts/cloud-config.yaml")
 
   # add vpc security group 
+  vpc_security_group_ids = [aws_security_group.web.id]
+
   subnet_id = aws_subnet.web.id
+
 
   tags = {
     Name = "Web"
     # add project name using local
+    project_name = local.project_name
   }
 }
 

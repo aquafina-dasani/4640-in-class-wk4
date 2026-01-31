@@ -7,6 +7,6 @@ users:
     sudo: ['ALL=(ALL) NOPASSWD:ALL']
     ssh-authorized-keys:
       - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFVznesf5G23SRfc5KL1+im+rzGakNHAevS0HEZSQZ8J ncao5@LAPTOP-TA8ED61P
-packges:
+packages:
   - nginx
   - nmap
